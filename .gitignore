@@ -6,3 +6,4 @@ DeepLearning_*.py
 CML.py
 predict_test.py
 train*.py
+plot*
