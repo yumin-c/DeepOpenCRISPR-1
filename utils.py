@@ -6,22 +6,30 @@ from torch.utils.data import Dataset
 class CRISPRDataset(Dataset):
     def __init__(self, data):
         self.data = data
-        self.encoded_sequences = {
-            idx: (self._one_hot_encode(row['Spacer'], pad_left=False),
-                  self._one_hot_encode(row['Target'], pad_left=True))
-            for idx, row in data.iterrows()
-        }
+        # Store the original indices
+        self.indices = list(data.index)
+        # Create position-based encoded sequences
+        self.encoded_sequences = [
+            (self._one_hot_encode(row['Spacer'], pad_left=False),
+             self._one_hot_encode(row['Target'], pad_left=True))
+            for _, row in data.iterrows()
+        ]
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         spacer, target = self.encoded_sequences[idx]
-        activity = np.log1p(self.data.iloc[idx]['Activity'])
+        # Use the stored indices to get the correct row
+        actual_idx = self.indices[idx]
+        row = self.data.loc[actual_idx]
+        activity = np.log1p(row['Activity'])
+        ontarget = row['ontarget']
         
-        return torch.tensor(spacer, dtype=torch.float32), \
-               torch.tensor(target, dtype=torch.float32), \
-               torch.tensor(activity, dtype=torch.float32)
+        return (torch.tensor(spacer, dtype=torch.float32),
+                torch.tensor(target, dtype=torch.float32),
+                torch.tensor(activity, dtype=torch.float32),
+                torch.tensor(ontarget, dtype=int))
 
     def _one_hot_encode(self, seq, length=31, pad_left=True):
         bases = {'A': 0, 'T': 1, 'G': 2, 'C': 3}

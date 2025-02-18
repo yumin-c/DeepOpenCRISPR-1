@@ -1,7 +1,6 @@
 prediction*.csv
 wandb/
 __pycache__/
-*.jpg
 EDA.ipynb
 DeepLearning_*.py
 CML.py
