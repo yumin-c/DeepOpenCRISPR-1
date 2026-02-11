@@ -21,7 +21,17 @@ Predicts OpenCRISPR-1 guide RNA activity (day 7, %) using deep learning and conv
 | GradientBoosting | 0.615 +/- 0.100 | 0.635 +/- 0.099 |
 | LightGBM | 0.613 +/- 0.122 | 0.639 +/- 0.109 |
 
-**Test set (DeepOC)**: Spearman = 0.9044, Pearson = 0.9363
+## Results (Test Set)
+
+| Model | Spearman | Pearson |
+|-------|----------|---------|
+| **DeepOC (DL)** | **0.9044** | **0.9363** |
+| XGBoost | 0.689 | 0.709 |
+| GradientBoosting | 0.689 | 0.715 |
+| LightGBM | 0.680 | 0.706 |
+| CatBoost | 0.647 | 0.652 |
+
+ML test results use one-hot + features (212-dim) mode.
 
 ## Model Architecture (DeepOC)
 
@@ -75,11 +85,13 @@ OC1/
 ├── train_ml.py             # 19 ML models training (5-fold CV)
 ├── shap_analysis.py        # SHAP feature importance (5 tree models)
 ├── predict_dl.py           # DeepOC inference
+├── predict_ml.py           # ML models test set prediction
 ├── plot_comparison.py      # DL vs ML box plot comparison
 ├── data/
 │   └── 20260129_DeepOpenCRISPR-1_sequence_with_features.tsv
 └── results/
     ├── dl_260211_1719/     # DL results, fold models, predictions
-    ├── ml_260211_1744/     # ML CV results, predictions
-    └── shap_260211_1756/   # SHAP values, summary/bar plots, heatmap
+    ├── ml_260211_1744/     # ML CV + test results, predictions
+    ├── shap_260211_1756/   # SHAP values, summary/bar plots, heatmap
+    └── model_comparison_*.jpg  # DL vs ML box plot comparisons
 ```
