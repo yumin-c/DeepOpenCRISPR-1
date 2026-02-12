@@ -1,4 +1,4 @@
-# DeepOC — OpenCRISPR-1 Activity Prediction
+# DeepOC(DeepOpenCRISPR) — OpenCRISPR-1 Activity Prediction
 
 Predicts OpenCRISPR-1 guide RNA activity (day 7, %) using deep learning and conventional ML models.
 
@@ -32,8 +32,10 @@ Predicts OpenCRISPR-1 guide RNA activity (day 7, %) using deep learning and conv
 | CatBoost | 0.647 | 0.652 |
 
 ML test results use one-hot + features (212-dim) mode.
+- **one-hot**: 30 x 4(ATGC) + 19 x 4(ATGC) = 196-dim
+- **features**: 16-dim
 
-## Model Architecture (DeepOC)
+## Model Architecture (DeepOpenCRISPR)
 
 ```
 Spacer (19bp, center-padded to 30) ─┐
@@ -66,7 +68,6 @@ Target (30bp, left-padded to 30)  ──┘           Conv1d(32,64) ─ GELU ─
 ## Inference
 
 ```bash
-conda activate ym_pytorch
 python predict_dl.py --input data/input.tsv --output results/predictions.csv
 ```
 
