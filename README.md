@@ -37,7 +37,7 @@ ML test results use one-hot + features (212-dim) mode.
 
 ```
 Spacer (19bp, center-padded to 30) ─┐
-                                     ├─ Concat ─ Conv1d(8,32) ─ GELU ─ AvgPool
+                                    ├─ Concat ─ Conv1d(8,32) ─ GELU ─ AvgPool
 Target (30bp, left-padded to 30)  ──┘            Conv1d(32,64) ─ GELU ─ AvgPool
                                                  Conv1d(64,128) ─ GELU ─ Flatten(896)
                                                                             │
