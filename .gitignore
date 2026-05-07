@@ -1,9 +1,21 @@
-prediction*.csv
-wandb/
+# Python
 __pycache__/
+*.pyc
+
+# Notebooks / EDA
 EDA.ipynb
+
+# Local-only legacy scripts
 DeepLearning_*.py
 CML.py
 predict_test.py
-train*.py
-plot*
+
+# Tool / training intermediates
+wandb/
+catboost_info/
+
+# Stale/intermediate results not used for the manuscript
+results/shap_260211_1756/
+results/shap_dl_260331_2055/
+results/dl_predictions.csv
+prediction*.csv
