@@ -125,7 +125,7 @@ def run_cv(data, feature_mode='features_only'):
 
 
 def main():
-    data = pd.read_csv('data/20260129_DeepOpenCRISPR-1_sequence_with_features.tsv', sep='\t')
+    data = pd.read_csv('data/OpenCRISPR-1_dataset.tsv', sep='\t')
     train_val_data = data[data['Fold'] != 'Test'].copy()
     print(f'Train/Val samples: {len(train_val_data)}')
 

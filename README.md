@@ -1,7 +1,11 @@
 # DeepOC (DeepOpenCRISPR) — OpenCRISPR-1 Activity Prediction
 
 A deep-learning regressor for OpenCRISPR-1 guide-RNA activity (day 7, %),
-benchmarked against 19 conventional ML baselines and explained with SHAP.
+predicted **from sequence alone**. DeepOC pairs a convolutional trunk over the
+spacer/target one-hot with a dedicated branch that reads the 4-nt PAM at full
+resolution. The repository also contains the conventional-ML baselines and a
+variance analysis quantifying how much of the per-target activity variance the
+characterized sequence features explain relative to the model.
 
 ## 1. System requirements
 
@@ -16,15 +20,13 @@ versions below are the lower bounds we have validated):
 | PyTorch        | 2.0             | DeepOC training/inference |
 | NumPy          | 1.23            | Tensor / array ops |
 | pandas         | 1.5             | Data I/O |
-| scikit-learn   | 1.2             | ML baselines, scaling |
+| scikit-learn   | 1.2             | ML baselines, variance analysis |
 | SciPy          | 1.10            | Spearman / Pearson |
 | matplotlib     | 3.6             | Plots |
+| seaborn        | 0.12            | Variance-analysis figure |
 | XGBoost        | 1.7             | ML baseline |
 | LightGBM       | 3.3             | ML baseline |
 | CatBoost       | 1.2             | ML baseline |
-| SHAP           | 0.42            | Interpretation |
-| Biopython      | 1.80            | Feature engineering (only needed if recomputing features) |
-| ViennaRNA      | 2.6             | MFE feature (only needed if recomputing features) |
 
 ### Tested on
 
@@ -33,8 +35,8 @@ versions below are the lower bounds we have validated):
 
 ### Hardware
 
-- A single NVIDIA GPU with >= 24 GB VRAM is sufficient for training (e.g.
-  RTX 3090 / 4090 / A5000). Inference runs on CPU as well.
+- A single NVIDIA GPU is sufficient for training (the model is small; < 4 GB
+  VRAM). Inference runs on CPU as well.
 - No non-standard hardware is required.
 
 ## 2. Installation guide
@@ -51,8 +53,8 @@ conda activate deepoc
 pip install torch
 
 # Other dependencies
-pip install numpy pandas scikit-learn scipy matplotlib \
-            xgboost lightgbm catboost shap biopython
+pip install numpy pandas scikit-learn scipy matplotlib seaborn \
+            xgboost lightgbm catboost
 ```
 
 Typical install time on a normal desktop: **5–10 minutes**, dominated by the
@@ -71,16 +73,9 @@ python predict_dl.py --input data/demo_input.tsv --output demo_predictions.csv
 
 ### Expected output
 
-A CSV identical to the input plus a final `prediction` column containing the
-predicted activity (%, original scale) from the 5-fold ensemble. Example
-header:
-
-```
-Spacer  Target  OpenCRISPR-1 activity (day 7, %)  Fold  ...  prediction
-```
-
-Predictions for the 180 demo rows fall in roughly `[0, 90]` %, matching the
-training distribution.
+A CSV identical to the input plus a final `prediction` column with the predicted
+activity (%, original scale) from the 5-fold ensemble. Predictions for the 180
+demo rows fall in roughly `[0, 90]` %, matching the training distribution.
 
 ### Expected runtime
 
@@ -91,90 +86,80 @@ training distribution.
 
 ### Predict on your own data
 
-Prepare a tab-separated file with the columns below, then run
-`predict_dl.py`:
+DeepOC uses **sequence only** — the input needs just two columns:
 
 | Column | Description |
 |--------|-------------|
-| `Spacer` | 19-bp guide-RNA spacer |
-| `Target` | 30-bp target sequence (5-bp upstream + 19-bp protospacer + 3-bp PAM + 3-bp downstream) |
-| 7 `GC_*` columns | GC content of spacer / target windows |
-| 7 `Tm_*` columns | Melting temperature of spacer / target windows |
-| `MFE_spacer`, `MFE_sgRNA` | RNA minimum free energy (ViennaRNA) |
+| `Spacer` | 19-nt guide-RNA spacer |
+| `Target` | 30-nt target (5-nt upstream + 19-nt protospacer + 3-nt PAM + 3-nt downstream) |
 
-The 16 numerical features are listed at the top of `train_dl.py`
-(`FEATURE_COLS`). Activity ground truth is **not** required at inference.
+Ground-truth activity is **not** required at inference.
 
 ```bash
 python predict_dl.py --input your_data.tsv --output your_predictions.csv
-# optional: --device cpu
+# optional: --model_dir results/deepoc   --device cpu
 ```
 
 ### Reproducing manuscript results
 
-The full training data is at
-[data/20260129_DeepOpenCRISPR-1_sequence_with_features.tsv](data/20260129_DeepOpenCRISPR-1_sequence_with_features.tsv)
-(13,943 samples; 5 CV folds + held-out test set).
+The training data is at
+[data/OpenCRISPR-1_dataset.tsv](data/OpenCRISPR-1_dataset.tsv)
+(13,943 sgRNA–target pairs; 5 CV folds + held-out test set).
 
 ```bash
-# 1. DeepOC: 5-fold CV + held-out test (~30 min on a single GPU)
+# 1. Train the final DeepOC (5-fold CV + held-out test) -> results/deepoc/
 python train_dl.py
 
-# 2. 19 ML baselines: 5-fold CV in two feature modes (~30–60 min on CPU)
+# 2. Conventional ML baselines (5-fold CV, two feature modes)
 python train_ml.py
 
-# 3. SHAP for tree-based ML models
-python shap_analysis.py
-
-# 4. SHAP for the DeepOC ensemble (writes results/shap_unified_*/)
-python shap_dl_analysis.py
-python plot_shap_dl.py            # plots from latest results/shap_unified_*
-
-# 5. DL vs ML comparison plots
-python plot_comparison.py
+# 3. Variance analysis: how much activity variance the sequence features
+#    (GC, positional, PAM) explain versus DeepOC, with a replicate-based ceiling
+python variance_analysis/feature_ceiling_report.py    # blocks vs DeepOC vs ceiling
+python variance_analysis/analyze_feature_combos.py    # 7 feature combinations vs DeepOC
+python variance_analysis/analyze_paper_features.py    # per-feature variance (sublibrary)
 ```
 
-Outputs land in timestamped folders under `results/`. Pretrained DeepOC fold
-models live in [results/dl_260211_1719/](results/dl_260211_1719/) and are
-used by `predict_dl.py` and `shap_dl_analysis.py` by default.
+The trained DeepOC fold models and out-of-fold predictions live in
+[results/deepoc/](results/deepoc/) and are used by `predict_dl.py` and by the
+variance analysis. Numeric variance-analysis outputs (with 95 % bootstrap
+confidence intervals) are written into `variance_analysis/`; see
+[variance_analysis/README.txt](variance_analysis/README.txt) for the column
+dictionary.
 
 ### Headline results
 
-5-fold CV (mean +/- std):
+Prediction accuracy (Pearson r):
 
-| Model | Spearman | Pearson |
-|-------|----------|---------|
-| **DeepOC** | **0.8835 +/- 0.017** | **0.9247 +/- 0.013** |
-| CatBoost | 0.640 +/- 0.117 | 0.620 +/- 0.131 |
-| XGBoost  | 0.634 +/- 0.107 | 0.655 +/- 0.096 |
-
-Held-out test set:
-
-| Model | Spearman | Pearson |
-|-------|----------|---------|
-| **DeepOC** | **0.9044** | **0.9363** |
-| XGBoost | 0.689 | 0.709 |
+| Model | 5-fold CV | Held-out test |
+|-------|-----------|---------------|
+| **DeepOC** (sequence only) | **0.927** | **0.932** |
+| Best conventional ML (one-hot + 16 features) | 0.655 | 0.715 |
 
 ## File layout
 
 ```
 OC1/
-├── train_dl.py             DeepOC training (5-fold CV + test ensemble)
-├── train_ml.py             19 ML baselines (5-fold CV, two feature modes)
-├── shap_analysis.py        SHAP for the 5 tree-based ML baselines
-├── shap_dl_analysis.py     DeepGradientShap on the DeepOC fold ensemble
-├── plot_shap_dl.py         Plotting helper for shap_dl_analysis output
-├── plot_comparison.py      DL-vs-ML box-plot comparisons
-├── predict_dl.py           DeepOC inference CLI
+├── train_dl.py             DeepOC training (final model: 5-fold CV + test ensemble)
+├── predict_dl.py           DeepOC inference (Spacer + Target only)
+├── train_ml.py             19 conventional ML baselines
 ├── predict_ml.py           ML-baseline inference on the held-out test set
+├── plot_comparison.py      DL-vs-ML comparison plots
 ├── data/
-│   ├── 20260129_DeepOpenCRISPR-1_sequence_with_features.tsv   full dataset
-│   └── demo_input.tsv      180-sample demo subset
-└── results/
-    ├── dl_260211_1719/                pretrained DeepOC folds + metrics
-    ├── ml_260211_1744/                ML baselines CV + test results
-    ├── shap_unified_260403_1655/      DeepOC SHAP (manuscript figure)
-    └── model_comparison_*.jpg         DL-vs-ML comparison plots
+│   ├── OpenCRISPR-1_dataset.tsv          main dataset (13,943 pairs; activity + folds)
+│   ├── OpenCRISPR-1_replicates.csv       same pairs + replicate measurements (for the ceiling)
+│   ├── OpenCRISPR-1_feature_library.csv  PAM / spacer-length characterization sublibrary
+│   └── demo_input.tsv                    180-sample demo
+├── results/
+│   ├── deepoc/             final DeepOC fold weights + predictions + metrics
+│   └── ml_260211_1744/     conventional ML CV + test results
+└── variance_analysis/      sequence-feature variance vs DeepOC (+ reproducibility ceiling)
+    ├── feature_ceiling_report.py   feature blocks vs DeepOC vs ceiling (bootstrap)
+    ├── analyze_feature_combos.py   7 feature-block combinations vs DeepOC, per stratum
+    ├── analyze_paper_features.py   per-feature variance on the characterization sublibrary
+    ├── analyze_ceiling_vs_deepoc.py   shared helpers (loading, out-of-fold, bootstrap)
+    ├── *.csv                        numeric results with 95% bootstrap CIs
+    └── README.txt                   column dictionary
 ```
 
 ## License

@@ -14,8 +14,16 @@ predict_test.py
 wandb/
 catboost_info/
 
-# Stale/intermediate results not used for the manuscript
-results/shap_260211_1756/
-results/shap_dl_260331_2055/
+# Figures and manuscript deliverables — kept locally, not uploaded to GitHub
+*.png
+*.jpg
+*.jpeg
+*.docx
+MATERIALS_AND_METHODS_revision.md
+# Colleague-facing report / figure generators (contain manuscript text) — local only
+variance_analysis/make_docx.py
+variance_analysis/plot_example.py
+
+# Stale / prediction dumps
 results/dl_predictions.csv
 prediction*.csv
