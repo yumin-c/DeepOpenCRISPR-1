@@ -2,31 +2,49 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from scipy.stats import spearmanr, pearsonr
 
 # ── Load data ──
-ml_feat = pd.read_csv('results/ml_260211_1744/cv_per_fold_features_only.csv')
-ml_oh = pd.read_csv('results/ml_260211_1744/cv_per_fold_onehot_features.csv')
-dl = pd.read_csv('results/dl_260211_1719/cv_metrics.csv')
+ML_DIR = 'results/ml_260920_1223'
+
+# Input modes to consider for the ML baseline. DeepOC is sequence-only, so the
+# default keeps the ML side sequence-only too (like-for-like). Add the commented
+# entries back for the three-mode comparison, where each model is shown under
+# whichever input representation gave it the highest mean Spearman.
+MODES = [
+    # ('features_only', 'Feat'),
+    ('onehot_only', 'OneHot'),
+    # ('onehot_features', 'OneHot+Feat'),
+]
+
+ml_modes = {label: pd.read_csv(f'{ML_DIR}/cv_per_fold_{name}.csv') for name, label in MODES}
 
 # ── Prepare DL data ──
-dl_df = pd.DataFrame({
-    'model': 'DL (DeepOC)',
-    'fold': dl['fold'],
-    'spearman': dl['spearman'],
-    'pearson': dl['pearson'],
-})
+# results/deepoc/cv_metrics.csv is aggregated by stratum, so the per-fold
+# numbers are recomputed from the held-out CV predictions instead.
+dl_pred = pd.read_csv('results/deepoc/cv_predictions.csv')
+ACTIVITY = 'OpenCRISPR-1 activity (day 7, %)'
+dl_rows = []
+for fold_idx in range(5):
+    f = dl_pred[dl_pred['Fold'] == f'Fold{fold_idx}']
+    dl_rows.append({
+        'model': 'DL (DeepOC)',
+        'fold': fold_idx,
+        'spearman': spearmanr(f[ACTIVITY], f['prediction']).statistic,
+        'pearson': pearsonr(f[ACTIVITY], f['prediction']).statistic,
+    })
+dl_df = pd.DataFrame(dl_rows)
 
-# ── Best ML mode per model: pick whichever mode gave higher mean Spearman ──
+# ── Best ML mode per model: pick whichever mode gave the highest mean Spearman ──
 ml_best_rows = []
-for model_name in ml_feat['model'].unique():
-    feat_vals = ml_feat[ml_feat['model'] == model_name]['spearman']
-    oh_vals = ml_oh[ml_oh['model'] == model_name]['spearman']
-    if oh_vals.mean() >= feat_vals.mean():
-        subset = ml_oh[ml_oh['model'] == model_name].copy()
-        subset['input_mode'] = 'OneHot+Feat'
-    else:
-        subset = ml_feat[ml_feat['model'] == model_name].copy()
-        subset['input_mode'] = 'Feat'
+for model_name in next(iter(ml_modes.values()))['model'].unique():
+    best_label = max(
+        ml_modes,
+        key=lambda label: ml_modes[label].loc[ml_modes[label]['model'] == model_name, 'spearman'].mean(),
+    )
+    df = ml_modes[best_label]
+    subset = df[df['model'] == model_name].copy()
+    subset['input_mode'] = best_label
     ml_best_rows.append(subset)
 ml_best = pd.concat(ml_best_rows)
 

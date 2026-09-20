@@ -30,7 +30,7 @@ FEATURE_COLS = [
     'MFE_spacer', 'MFE_sgRNA',
 ]
 
-SAVE_DIR = 'results/ml_260211_1744'
+SAVE_DIR = 'results/ml_260920_1223'
 
 
 def encode_sequences_onehot(spacers, targets):
@@ -83,7 +83,7 @@ def main():
     y_train = train_val['OpenCRISPR-1 activity (day 7, %)'].values
     y_test = test['OpenCRISPR-1 activity (day 7, %)'].values
 
-    for mode in ['features_only', 'onehot_features']:
+    for mode in ['features_only', 'onehot_only', 'onehot_features']:
         print(f'\n{"="*60}')
         print(f'  MODE: {mode}')
         print(f'{"="*60}')
@@ -91,6 +91,9 @@ def main():
         if mode == 'features_only':
             X_train = train_val[FEATURE_COLS].values
             X_test = test[FEATURE_COLS].values
+        elif mode == 'onehot_only':
+            X_train = encode_sequences_onehot(train_val['Spacer'].values, train_val['Target'].values)
+            X_test = encode_sequences_onehot(test['Spacer'].values, test['Target'].values)
         else:
             oh_train = encode_sequences_onehot(train_val['Spacer'].values, train_val['Target'].values)
             oh_test = encode_sequences_onehot(test['Spacer'].values, test['Target'].values)

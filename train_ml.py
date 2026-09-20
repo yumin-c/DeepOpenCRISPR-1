@@ -77,7 +77,8 @@ def calc_metrics(y_true, y_pred):
 
 
 def run_cv(data, feature_mode='features_only'):
-    """feature_mode: 'features_only' (16 dims) or 'onehot_features' (196+16=212 dims)."""
+    """feature_mode: 'features_only' (16 dims), 'onehot_only' (196 dims),
+    or 'onehot_features' (196+16=212 dims)."""
     folds = [f'Fold{i}' for i in range(5)]
     models_dict = get_models()
 
@@ -92,6 +93,9 @@ def run_cv(data, feature_mode='features_only'):
         if feature_mode == 'features_only':
             X_train = train[FEATURE_COLS].values
             X_val = val[FEATURE_COLS].values
+        elif feature_mode == 'onehot_only':
+            X_train = encode_sequences_onehot(train['Spacer'].values, train['Target'].values)
+            X_val = encode_sequences_onehot(val['Spacer'].values, val['Target'].values)
         else:
             oh_train = encode_sequences_onehot(train['Spacer'].values, train['Target'].values)
             oh_val = encode_sequences_onehot(val['Spacer'].values, val['Target'].values)
@@ -133,15 +137,18 @@ def main():
     save_dir = f'results/ml_{timestamp}'
     os.makedirs(save_dir, exist_ok=True)
 
-    print('\n' + '='*60)
-    print('  MODE: 16 Computed Features Only')
-    print('='*60)
-    results_feat, preds_feat = run_cv(train_val_data, feature_mode='features_only')
+    MODES = [
+        ('features_only', '16 Computed Features Only'),
+        ('onehot_only', 'One-Hot Only (no computed features)'),
+        ('onehot_features', 'One-Hot + 16 Features'),
+    ]
 
-    print('\n' + '='*60)
-    print('  MODE: One-Hot + 16 Features')
-    print('='*60)
-    results_oh, preds_oh = run_cv(train_val_data, feature_mode='onehot_features')
+    all_results, all_preds = {}, {}
+    for mode_name, title in MODES:
+        print('\n' + '='*60)
+        print(f'  MODE: {title}')
+        print('='*60)
+        all_results[mode_name], all_preds[mode_name] = run_cv(train_val_data, feature_mode=mode_name)
 
     def summarize(results, mode_name):
         rows = []
@@ -158,23 +165,22 @@ def main():
         summary.to_csv(os.path.join(save_dir, f'cv_summary_{mode_name}.csv'), index=False)
         return summary
 
-    for mode_name, results in [('features_only', results_feat), ('onehot_features', results_oh)]:
+    summaries = {}
+    for mode_name, title in MODES:
+        results = all_results[mode_name]
+
         all_rows = []
         for name, fold_results in results.items():
             for r in fold_results:
                 all_rows.append({'model': name, **r})
         pd.DataFrame(all_rows).to_csv(os.path.join(save_dir, f'cv_per_fold_{mode_name}.csv'), index=False)
 
-    summary_feat = summarize(results_feat, 'features_only')
-    summary_oh = summarize(results_oh, 'onehot_features')
+        summaries[mode_name] = summarize(results, mode_name)
+        print(f'\n===== CV Summary ({title}) =====')
+        print(summaries[mode_name].to_string(index=False))
 
-    print('\n===== CV Summary (Features Only) =====')
-    print(summary_feat.to_string(index=False))
-    print('\n===== CV Summary (One-Hot + Features) =====')
-    print(summary_oh.to_string(index=False))
-
-    for mode_name, preds in [('features_only', preds_feat), ('onehot_features', preds_oh)]:
-        for model_name, fold_preds in preds.items():
+    for mode_name, _ in MODES:
+        for model_name, fold_preds in all_preds[mode_name].items():
             pred_df = train_val_data.copy()
             pred_df['prediction'] = np.nan
             for fold_name, p in fold_preds.items():
@@ -186,12 +192,10 @@ def main():
                 columns=['Spacer', 'Target', 'OpenCRISPR-1 activity (day 7, %)', 'Fold', 'prediction']
             )
 
-    fig, axes = plt.subplots(1, 2, figsize=(20, 8))
+    fig, axes = plt.subplots(1, len(MODES), figsize=(10 * len(MODES), 8))
 
-    for ax, summary, title in [
-        (axes[0], summary_feat, '16 Features Only'),
-        (axes[1], summary_oh, 'One-Hot + 16 Features'),
-    ]:
+    for ax, (mode_name, title) in zip(axes, MODES):
+        summary = summaries[mode_name]
         x = np.arange(len(summary))
         width = 0.35
         ax.barh(x - width/2, summary['mean_spearman'], width, xerr=summary['std_spearman'],

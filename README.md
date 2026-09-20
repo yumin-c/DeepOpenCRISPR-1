@@ -134,7 +134,16 @@ Prediction accuracy (Pearson r):
 | Model | 5-fold CV | Held-out test |
 |-------|-----------|---------------|
 | **DeepOC** (sequence only) | **0.927** | **0.932** |
+| Best conventional ML (one-hot, sequence only) | 0.680 | 0.723 |
 | Best conventional ML (one-hot + 16 features) | 0.655 | 0.715 |
+| Best conventional ML (16 features only) | 0.541 | 0.513 |
+
+The conventional baselines are trained under three input representations
+(`features_only`, `onehot_only`, `onehot_features`; see `train_ml.py`). Dropping
+the 16 computed features does not degrade the sequence-based baseline — the
+one-hot-only models match or slightly exceed the one-hot + feature models, with
+the gap well inside the fold-to-fold spread. The 16 features alone are clearly
+the weakest representation.
 
 ## File layout
 
@@ -152,7 +161,7 @@ OC1/
 │   └── demo_input.tsv                    180-sample demo
 ├── results/
 │   ├── deepoc/             final DeepOC fold weights + predictions + metrics
-│   └── ml_260211_1744/     conventional ML CV + test results
+│   └── ml_260920_1223/     conventional ML CV + test results (3 input modes)
 └── variance_analysis/      sequence-feature variance vs DeepOC (+ reproducibility ceiling)
     ├── feature_ceiling_report.py   feature blocks vs DeepOC vs ceiling (bootstrap)
     ├── analyze_feature_combos.py   7 feature-block combinations vs DeepOC, per stratum
