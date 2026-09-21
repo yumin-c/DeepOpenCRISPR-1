@@ -27,3 +27,6 @@ variance_analysis/plot_example.py
 # Stale / prediction dumps
 results/dl_predictions.csv
 prediction*.csv
+
+# Revision / manuscript working notes -- local only
+revision/
