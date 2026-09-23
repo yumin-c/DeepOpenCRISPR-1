@@ -7,14 +7,9 @@ from scipy.stats import spearmanr, pearsonr
 # ── Load data ──
 ML_DIR = 'results/ml_260920_1223'
 
-# Input modes to consider for the ML baseline. DeepOC is sequence-only, so the
-# default keeps the ML side sequence-only too (like-for-like). Add the commented
-# entries back for the three-mode comparison, where each model is shown under
-# whichever input representation gave it the highest mean Spearman.
+# The ML baselines are one-hot only, matching sequence-only DeepOC.
 MODES = [
-    # ('features_only', 'Feat'),
     ('onehot_only', 'OneHot'),
-    # ('onehot_features', 'OneHot+Feat'),
 ]
 
 ml_modes = {label: pd.read_csv(f'{ML_DIR}/cv_per_fold_{name}.csv') for name, label in MODES}

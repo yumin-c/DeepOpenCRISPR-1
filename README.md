@@ -1,11 +1,11 @@
-# DeepOC (DeepOpenCRISPR) — OpenCRISPR-1 Activity Prediction
+# DeepOpenCRISPR-1 — OpenCRISPR-1 Activity Prediction
 
 A deep-learning regressor for OpenCRISPR-1 guide-RNA activity (day 7, %),
-predicted **from sequence alone**. DeepOC pairs a convolutional trunk over the
-spacer/target one-hot with a dedicated branch that reads the 4-nt PAM at full
-resolution. The repository also contains the conventional-ML baselines and a
-variance analysis quantifying how much of the per-target activity variance the
-characterized sequence features explain relative to the model.
+predicted **from sequence alone**. DeepOpenCRISPR-1 pairs a convolutional trunk
+over the spacer/target one-hot with a dedicated branch that reads the 4-nt PAM
+at full resolution. The repository also contains the conventional-ML baselines
+and a variance analysis quantifying how much of the per-target activity
+variance the characterized sequence features explain relative to the model.
 
 ## 1. System requirements
 
@@ -17,7 +17,7 @@ versions below are the lower bounds we have validated):
 | Package        | Minimum version | Used for |
 |----------------|-----------------|----------|
 | Python         | 3.10            | Runtime  |
-| PyTorch        | 2.0             | DeepOC training/inference |
+| PyTorch        | 2.0             | DeepOpenCRISPR-1 training/inference |
 | NumPy          | 1.23            | Tensor / array ops |
 | pandas         | 1.5             | Data I/O |
 | scikit-learn   | 1.2             | ML baselines, variance analysis |
@@ -42,12 +42,12 @@ versions below are the lower bounds we have validated):
 ## 2. Installation guide
 
 ```bash
-git clone https://github.com/yumin-c/DeepOpenCRISPR.git
-cd DeepOpenCRISPR
+git clone https://github.com/yumin-c/oc1.git
+cd oc1
 
 # Create an environment (conda example)
-conda create -n deepoc python=3.11 -y
-conda activate deepoc
+conda create -n deepopencrispr python=3.11 -y
+conda activate deepopencrispr
 
 # Install PyTorch matching your CUDA version (see https://pytorch.org)
 pip install torch
@@ -86,7 +86,7 @@ demo rows fall in roughly `[0, 90]` %, matching the training distribution.
 
 ### Predict on your own data
 
-DeepOC uses **sequence only** — the input needs just two columns:
+DeepOpenCRISPR-1 uses **sequence only** — the input needs just two columns:
 
 | Column | Description |
 |--------|-------------|
@@ -107,25 +107,39 @@ The training data is at
 (13,943 sgRNA–target pairs; 5 CV folds + held-out test set).
 
 ```bash
-# 1. Train the final DeepOC (5-fold CV + held-out test) -> results/deepoc/
+# 1. Train the final DeepOpenCRISPR-1 (5-fold CV + held-out test) -> results/deepoc/
 python train_dl.py
 
-# 2. Conventional ML baselines (5-fold CV, two feature modes)
+# 2. Conventional ML baselines (19 models, 5-fold CV, one-hot input)
 python train_ml.py
 
-# 3. Variance analysis: how much activity variance the sequence features
-#    (GC, positional, PAM) explain versus DeepOC, with a replicate-based ceiling
-python variance_analysis/feature_ceiling_report.py    # blocks vs DeepOC vs ceiling
-python variance_analysis/analyze_feature_combos.py    # 7 feature combinations vs DeepOC
+# 3. Held-out test evaluation of the ML baselines
+python predict_ml.py
+
+# 4. Variance analysis: how much activity variance the sequence features
+#    (GC, positional, PAM) explain versus DeepOpenCRISPR-1, with a
+#    replicate-based ceiling
+python variance_analysis/feature_ceiling_report.py    # blocks vs model vs ceiling
+python variance_analysis/analyze_feature_combos.py    # 7 feature combinations
 python variance_analysis/analyze_paper_features.py    # per-feature variance (sublibrary)
 ```
 
-The trained DeepOC fold models and out-of-fold predictions live in
+The trained fold models and out-of-fold predictions live in
 [results/deepoc/](results/deepoc/) and are used by `predict_dl.py` and by the
 variance analysis. Numeric variance-analysis outputs (with 95 % bootstrap
 confidence intervals) are written into `variance_analysis/`; see
 [variance_analysis/README.txt](variance_analysis/README.txt) for the column
 dictionary.
+
+### Model inputs
+
+Both model families are trained on sequence alone, with no computed sequence
+features (GC content, melting temperature or folding free energy):
+
+| | Input |
+|---|---|
+| DeepOpenCRISPR-1 | spacer + target one-hot (4 × 30 each), plus the 4-nt PAM window |
+| Conventional ML  | 196-dim flat one-hot (spacer 19 × 4 = 76, target 30 × 4 = 120) |
 
 ### Headline results
 
@@ -133,25 +147,23 @@ Prediction accuracy (Pearson r):
 
 | Model | 5-fold CV | Held-out test |
 |-------|-----------|---------------|
-| **DeepOC** (sequence only) | **0.927** | **0.932** |
-| Best conventional ML (one-hot, sequence only) | 0.680 | 0.723 |
-| Best conventional ML (one-hot + 16 features) | 0.655 | 0.715 |
-| Best conventional ML (16 features only) | 0.541 | 0.513 |
+| **DeepOpenCRISPR-1** | **0.927** | **0.932** |
+| Best conventional ML (XGBoost) | 0.680 | 0.723 |
 
-The conventional baselines are trained under three input representations
-(`features_only`, `onehot_only`, `onehot_features`; see `train_ml.py`). Dropping
-the 16 computed features does not degrade the sequence-based baseline — the
-one-hot-only models match or slightly exceed the one-hot + feature models, with
-the gap well inside the fold-to-fold spread. The 16 features alone are clearly
-the weakest representation.
+The conventional baselines span 19 algorithms — linear and regularized models,
+linear SVR, k-nearest neighbours, decision-tree, bagging and boosting
+ensembles, and a multilayer perceptron. Per-model and per-fold numbers are in
+[results/ml_260920_1223/](results/ml_260920_1223/): `cv_summary_onehot_only.csv`
+(mean ± s.d. across folds), `cv_per_fold_onehot_only.csv` (individual folds),
+and `test_summary_onehot_only.csv` (held-out test).
 
 ## File layout
 
 ```
 OC1/
-├── train_dl.py             DeepOC training (final model: 5-fold CV + test ensemble)
-├── predict_dl.py           DeepOC inference (Spacer + Target only)
-├── train_ml.py             19 conventional ML baselines
+├── train_dl.py             DeepOpenCRISPR-1 training (5-fold CV + test ensemble)
+├── predict_dl.py           DeepOpenCRISPR-1 inference (Spacer + Target only)
+├── train_ml.py             19 conventional ML baselines (one-hot input)
 ├── predict_ml.py           ML-baseline inference on the held-out test set
 ├── plot_comparison.py      DL-vs-ML comparison plots
 ├── data/
@@ -160,15 +172,16 @@ OC1/
 │   ├── OpenCRISPR-1_feature_library.csv  PAM / spacer-length characterization sublibrary
 │   └── demo_input.tsv                    180-sample demo
 ├── results/
-│   ├── deepoc/             final DeepOC fold weights + predictions + metrics
-│   └── ml_260920_1223/     conventional ML CV + test results (3 input modes)
-└── variance_analysis/      sequence-feature variance vs DeepOC (+ reproducibility ceiling)
-    ├── feature_ceiling_report.py   feature blocks vs DeepOC vs ceiling (bootstrap)
-    ├── analyze_feature_combos.py   7 feature-block combinations vs DeepOC, per stratum
-    ├── analyze_paper_features.py   per-feature variance on the characterization sublibrary
-    ├── analyze_ceiling_vs_deepoc.py   shared helpers (loading, out-of-fold, bootstrap)
-    ├── *.csv                        numeric results with 95% bootstrap CIs
-    └── README.txt                   column dictionary
+│   ├── deepoc/             fold weights (fold0..4.pt), CV / test predictions and metrics
+│   └── ml_260920_1223/     ML baselines: CV summary, per-fold and per-model predictions
+├── variance_analysis/      sequence-feature variance vs the model (+ reproducibility ceiling)
+│   ├── feature_ceiling_report.py      feature blocks vs model vs ceiling (bootstrap)
+│   ├── analyze_feature_combos.py      7 feature-block combinations, per stratum
+│   ├── analyze_paper_features.py      per-feature variance on the characterization sublibrary
+│   ├── analyze_ceiling_vs_deepoc.py   shared helpers (loading, out-of-fold, bootstrap)
+│   ├── *.csv                          numeric results with 95 % bootstrap CIs
+│   └── README.txt                     column dictionary
+└── LICENSE
 ```
 
 ## License

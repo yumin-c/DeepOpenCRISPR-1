@@ -18,14 +18,6 @@ from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 import matplotlib.pyplot as plt
 
-FEATURE_COLS = [
-    'GC_spacer', 'GC_target', 'GC_target_5p_context', 'GC_target_PAM_distal',
-    'GC_target_PAM_proximal', 'GC_target_PAM', 'GC_target_3p_context',
-    'Tm_spacer', 'Tm_target', 'Tm_target_5p_context', 'Tm_target_PAM_distal',
-    'Tm_target_PAM_proximal', 'Tm_target_PAM', 'Tm_target_3p_context',
-    'MFE_spacer', 'MFE_sgRNA',
-]
-
 
 def encode_sequences_onehot(spacers, targets):
     """Spacer (19x4=76) + Target (30x4=120) = 196-dim flat one-hot."""
@@ -76,9 +68,8 @@ def calc_metrics(y_true, y_pred):
     return sr, pr
 
 
-def run_cv(data, feature_mode='features_only'):
-    """feature_mode: 'features_only' (16 dims), 'onehot_only' (196 dims),
-    or 'onehot_features' (196+16=212 dims)."""
+def run_cv(data):
+    """5-fold CV on the 196-dim one-hot representation of Spacer + Target."""
     folds = [f'Fold{i}' for i in range(5)]
     models_dict = get_models()
 
@@ -90,19 +81,8 @@ def run_cv(data, feature_mode='features_only'):
         train = data[data['Fold'] != fold_name]
         val = data[data['Fold'] == fold_name]
 
-        if feature_mode == 'features_only':
-            X_train = train[FEATURE_COLS].values
-            X_val = val[FEATURE_COLS].values
-        elif feature_mode == 'onehot_only':
-            X_train = encode_sequences_onehot(train['Spacer'].values, train['Target'].values)
-            X_val = encode_sequences_onehot(val['Spacer'].values, val['Target'].values)
-        else:
-            oh_train = encode_sequences_onehot(train['Spacer'].values, train['Target'].values)
-            oh_val = encode_sequences_onehot(val['Spacer'].values, val['Target'].values)
-            feat_train = train[FEATURE_COLS].values
-            feat_val = val[FEATURE_COLS].values
-            X_train = np.hstack([oh_train, feat_train])
-            X_val = np.hstack([oh_val, feat_val])
+        X_train = encode_sequences_onehot(train['Spacer'].values, train['Target'].values)
+        X_val = encode_sequences_onehot(val['Spacer'].values, val['Target'].values)
 
         y_train = train['OpenCRISPR-1 activity (day 7, %)'].values
         y_val = val['OpenCRISPR-1 activity (day 7, %)'].values
@@ -137,79 +117,55 @@ def main():
     save_dir = f'results/ml_{timestamp}'
     os.makedirs(save_dir, exist_ok=True)
 
-    MODES = [
-        ('features_only', '16 Computed Features Only'),
-        ('onehot_only', 'One-Hot Only (no computed features)'),
-        ('onehot_features', 'One-Hot + 16 Features'),
-    ]
+    print('\n' + '='*60)
+    print('  19 conventional ML models | one-hot input (196 dims)')
+    print('='*60)
+    results, preds = run_cv(train_val_data)
 
-    all_results, all_preds = {}, {}
-    for mode_name, title in MODES:
-        print('\n' + '='*60)
-        print(f'  MODE: {title}')
-        print('='*60)
-        all_results[mode_name], all_preds[mode_name] = run_cv(train_val_data, feature_mode=mode_name)
+    rows = []
+    for name, fold_results in results.items():
+        df = pd.DataFrame(fold_results)
+        rows.append({
+            'model': name,
+            'mean_spearman': df['spearman'].mean(),
+            'std_spearman': df['spearman'].std(),
+            'mean_pearson': df['pearson'].mean(),
+            'std_pearson': df['pearson'].std(),
+        })
+    summary = pd.DataFrame(rows).sort_values('mean_spearman', ascending=False)
+    summary.to_csv(os.path.join(save_dir, 'cv_summary_onehot_only.csv'), index=False)
 
-    def summarize(results, mode_name):
-        rows = []
-        for name, fold_results in results.items():
-            df = pd.DataFrame(fold_results)
-            rows.append({
-                'model': name,
-                'mean_spearman': df['spearman'].mean(),
-                'std_spearman': df['spearman'].std(),
-                'mean_pearson': df['pearson'].mean(),
-                'std_pearson': df['pearson'].std(),
-            })
-        summary = pd.DataFrame(rows).sort_values('mean_spearman', ascending=False)
-        summary.to_csv(os.path.join(save_dir, f'cv_summary_{mode_name}.csv'), index=False)
-        return summary
+    per_fold = [{'model': name, **r} for name, fr in results.items() for r in fr]
+    pd.DataFrame(per_fold).to_csv(os.path.join(save_dir, 'cv_per_fold_onehot_only.csv'), index=False)
 
-    summaries = {}
-    for mode_name, title in MODES:
-        results = all_results[mode_name]
+    print('\n===== CV Summary =====')
+    print(summary.to_string(index=False))
 
-        all_rows = []
-        for name, fold_results in results.items():
-            for r in fold_results:
-                all_rows.append({'model': name, **r})
-        pd.DataFrame(all_rows).to_csv(os.path.join(save_dir, f'cv_per_fold_{mode_name}.csv'), index=False)
+    for model_name, fold_preds in preds.items():
+        pred_df = train_val_data.copy()
+        pred_df['prediction'] = np.nan
+        for fold_name, p in fold_preds.items():
+            pred_df.loc[pred_df['Fold'] == fold_name, 'prediction'] = p
+        pred_df.to_csv(
+            os.path.join(save_dir, f'cv_pred_onehot_only_{model_name}.csv'),
+            index=False,
+            columns=['Spacer', 'Target', 'OpenCRISPR-1 activity (day 7, %)', 'Fold', 'prediction']
+        )
 
-        summaries[mode_name] = summarize(results, mode_name)
-        print(f'\n===== CV Summary ({title}) =====')
-        print(summaries[mode_name].to_string(index=False))
-
-    for mode_name, _ in MODES:
-        for model_name, fold_preds in all_preds[mode_name].items():
-            pred_df = train_val_data.copy()
-            pred_df['prediction'] = np.nan
-            for fold_name, p in fold_preds.items():
-                mask = pred_df['Fold'] == fold_name
-                pred_df.loc[mask, 'prediction'] = p
-            pred_df.to_csv(
-                os.path.join(save_dir, f'cv_pred_{mode_name}_{model_name}.csv'),
-                index=False,
-                columns=['Spacer', 'Target', 'OpenCRISPR-1 activity (day 7, %)', 'Fold', 'prediction']
-            )
-
-    fig, axes = plt.subplots(1, len(MODES), figsize=(10 * len(MODES), 8))
-
-    for ax, (mode_name, title) in zip(axes, MODES):
-        summary = summaries[mode_name]
-        x = np.arange(len(summary))
-        width = 0.35
-        ax.barh(x - width/2, summary['mean_spearman'], width, xerr=summary['std_spearman'],
-                label='Spearman', color='#3498db', alpha=0.8, capsize=3)
-        ax.barh(x + width/2, summary['mean_pearson'], width, xerr=summary['std_pearson'],
-                label='Pearson', color='#e74c3c', alpha=0.8, capsize=3)
-        ax.set_yticks(x)
-        ax.set_yticklabels(summary['model'], fontsize=9)
-        ax.set_xlabel('Correlation')
-        ax.set_title(title)
-        ax.legend()
-        ax.grid(axis='x', alpha=0.3, linestyle='--')
-        ax.invert_yaxis()
-
+    fig, ax = plt.subplots(figsize=(10, 8))
+    x = np.arange(len(summary))
+    width = 0.35
+    ax.barh(x - width/2, summary['mean_spearman'], width, xerr=summary['std_spearman'],
+            label='Spearman', color='#3498db', alpha=0.8, capsize=3)
+    ax.barh(x + width/2, summary['mean_pearson'], width, xerr=summary['std_pearson'],
+            label='Pearson', color='#e74c3c', alpha=0.8, capsize=3)
+    ax.set_yticks(x)
+    ax.set_yticklabels(summary['model'], fontsize=9)
+    ax.set_xlabel('Correlation')
+    ax.set_title('5-fold CV | one-hot input')
+    ax.legend()
+    ax.grid(axis='x', alpha=0.3, linestyle='--')
+    ax.invert_yaxis()
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'cv_comparison_barplot.jpg'), dpi=300, bbox_inches='tight')
     plt.close()

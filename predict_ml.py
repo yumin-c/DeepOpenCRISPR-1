@@ -22,17 +22,6 @@ from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 
-FEATURE_COLS = [
-    'GC_spacer', 'GC_target', 'GC_target_5p_context', 'GC_target_PAM_distal',
-    'GC_target_PAM_proximal', 'GC_target_PAM', 'GC_target_3p_context',
-    'Tm_spacer', 'Tm_target', 'Tm_target_5p_context', 'Tm_target_PAM_distal',
-    'Tm_target_PAM_proximal', 'Tm_target_PAM', 'Tm_target_3p_context',
-    'MFE_spacer', 'MFE_sgRNA',
-]
-
-SAVE_DIR = 'results/ml_260920_1223'
-
-
 def encode_sequences_onehot(spacers, targets):
     bases = {'A': 0, 'T': 1, 'G': 2, 'C': 3}
     rows = []
@@ -83,49 +72,39 @@ def main():
     y_train = train_val['OpenCRISPR-1 activity (day 7, %)'].values
     y_test = test['OpenCRISPR-1 activity (day 7, %)'].values
 
-    for mode in ['features_only', 'onehot_only', 'onehot_features']:
-        print(f'\n{"="*60}')
-        print(f'  MODE: {mode}')
-        print(f'{"="*60}')
+    print(f'\n{"="*60}')
+    print('  19 conventional ML models | one-hot input (196 dims)')
+    print(f'{"="*60}')
 
-        if mode == 'features_only':
-            X_train = train_val[FEATURE_COLS].values
-            X_test = test[FEATURE_COLS].values
-        elif mode == 'onehot_only':
-            X_train = encode_sequences_onehot(train_val['Spacer'].values, train_val['Target'].values)
-            X_test = encode_sequences_onehot(test['Spacer'].values, test['Target'].values)
-        else:
-            oh_train = encode_sequences_onehot(train_val['Spacer'].values, train_val['Target'].values)
-            oh_test = encode_sequences_onehot(test['Spacer'].values, test['Target'].values)
-            X_train = np.hstack([oh_train, train_val[FEATURE_COLS].values])
-            X_test = np.hstack([oh_test, test[FEATURE_COLS].values])
+    X_train = encode_sequences_onehot(train_val['Spacer'].values, train_val['Target'].values)
+    X_test = encode_sequences_onehot(test['Spacer'].values, test['Target'].values)
 
-        scaler = StandardScaler()
-        X_train_sc = scaler.fit_transform(X_train)
-        X_test_sc = scaler.transform(X_test)
+    scaler = StandardScaler()
+    X_train_sc = scaler.fit_transform(X_train)
+    X_test_sc = scaler.transform(X_test)
 
-        models_dict = get_models()
-        rows = []
+    models_dict = get_models()
+    rows = []
 
-        for name, model in models_dict.items():
-            try:
-                model.fit(X_train_sc, y_train)
-                pred = model.predict(X_test_sc)
-                sr, _ = spearmanr(y_test, pred)
-                pr = pearsonr(y_test, pred).correlation
-                rows.append({'model': name, 'spearman': sr, 'pearson': pr})
-                print(f'  {name:25s} | S={sr:.4f} | P={pr:.4f}')
+    for name, model in models_dict.items():
+        try:
+            model.fit(X_train_sc, y_train)
+            pred = model.predict(X_test_sc)
+            sr, _ = spearmanr(y_test, pred)
+            pr = pearsonr(y_test, pred).correlation
+            rows.append({'model': name, 'spearman': sr, 'pearson': pr})
+            print(f'  {name:25s} | S={sr:.4f} | P={pr:.4f}')
 
-                # Save per-model predictions
-                pred_df = test[['Spacer', 'Target', 'OpenCRISPR-1 activity (day 7, %)']].copy()
-                pred_df['prediction'] = pred
-                pred_df.to_csv(os.path.join(SAVE_DIR, f'test_pred_{mode}_{name}.csv'), index=False)
-            except Exception as e:
-                print(f'  {name:25s} | ERROR: {e}')
-                rows.append({'model': name, 'spearman': np.nan, 'pearson': np.nan})
+            # Save per-model predictions
+            pred_df = test[['Spacer', 'Target', 'OpenCRISPR-1 activity (day 7, %)']].copy()
+            pred_df['prediction'] = pred
+            pred_df.to_csv(os.path.join(SAVE_DIR, f'test_pred_onehot_only_{name}.csv'), index=False)
+        except Exception as e:
+            print(f'  {name:25s} | ERROR: {e}')
+            rows.append({'model': name, 'spearman': np.nan, 'pearson': np.nan})
 
-        summary = pd.DataFrame(rows).sort_values('spearman', ascending=False)
-        summary.to_csv(os.path.join(SAVE_DIR, f'test_summary_{mode}.csv'), index=False)
+    summary = pd.DataFrame(rows).sort_values('spearman', ascending=False)
+    summary.to_csv(os.path.join(SAVE_DIR, 'test_summary_onehot_only.csv'), index=False)
 
     print(f'\nResults saved to: {SAVE_DIR}/')
 
