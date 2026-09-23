@@ -273,8 +273,8 @@ oof_predictions_<subset>.csv
     activity (measured), pred_deepoc, pred_features_gbm (GC+positional+PAM),
     pred_combined_gbm, plus Replicate 1/2 and the Info label.
 
-Subsets: matched_NGG (on-target, single optimal PAM class; primary),
-    all_matched (on-target, all PAMs), full (adds mismatched/off-target rows).
+Subsets: matched_NGG (on-target, NGG PAM; primary), matched_nonNGG
+    (on-target, non-NGG PAM), matched_all (on-target, all PAMs).
 Rows are restricted to the Fold0..4 cross-validation partition.
 """
 

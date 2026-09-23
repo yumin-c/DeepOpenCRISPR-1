@@ -42,8 +42,8 @@ versions below are the lower bounds we have validated):
 ## 2. Installation guide
 
 ```bash
-git clone https://github.com/yumin-c/oc1.git
-cd oc1
+git clone https://github.com/yumin-c/DeepOpenCRISPR-1.git
+cd DeepOpenCRISPR-1
 
 # Create an environment (conda example)
 conda create -n deepopencrispr python=3.11 -y
@@ -52,9 +52,8 @@ conda activate deepopencrispr
 # Install PyTorch matching your CUDA version (see https://pytorch.org)
 pip install torch
 
-# Other dependencies
-pip install numpy pandas scikit-learn scipy matplotlib seaborn \
-            xgboost lightgbm catboost
+# Other dependencies (exact versions used for the deposited results)
+pip install -r requirements.txt
 ```
 
 Typical install time on a normal desktop: **5–10 minutes**, dominated by the
@@ -181,6 +180,7 @@ OC1/
 │   ├── analyze_ceiling_vs_deepoc.py   shared helpers (loading, out-of-fold, bootstrap)
 │   ├── *.csv                          numeric results with 95 % bootstrap CIs
 │   └── README.txt                     column dictionary
+├── requirements.txt        pinned dependency versions
 └── LICENSE
 ```
 
