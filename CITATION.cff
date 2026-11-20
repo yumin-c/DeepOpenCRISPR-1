@@ -16,3 +16,17 @@ url: "https://github.com/yumin-c/DeepOpenCRISPR-1"
 license: MIT
 version: 1.0.0
 date-released: "2026-11-20"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.24387293"
+    description: "Zenodo archive of this software"
+# When the paper is published, add its citation as the preferred reference:
+# preferred-citation:
+#   type: article
+#   title: "<paper title>"
+#   authors:
+#     - given-names: Yumin
+#       family-names: Cheong
+#   journal: "<journal>"
+#   year: 2026
+#   doi: "<paper DOI>"

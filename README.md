@@ -1,5 +1,7 @@
 # DeepOpenCRISPR-1 — OpenCRISPR-1 Activity Prediction
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24387293.svg)](https://doi.org/10.5281/zenodo.24387293)
+
 A deep-learning regressor for OpenCRISPR-1 guide-RNA activity (day 7, %),
 predicted **from sequence alone**. DeepOpenCRISPR-1 pairs a convolutional trunk
 over the spacer/target one-hot with a dedicated branch that reads the 4-nt PAM
