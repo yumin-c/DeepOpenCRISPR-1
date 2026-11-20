@@ -9,8 +9,8 @@ type: software
 authors:
   - given-names: Yumin
     family-names: Cheong
-    affiliation: "Yonsei University"
-    # orcid: "https://orcid.org/0000-0000-0000-0000"   # add if you have one
+    affiliation: "Yonsei University College of Medicine"
+    orcid: "https://orcid.org/0000-0002-5868-130X"
 repository-code: "https://github.com/yumin-c/DeepOpenCRISPR-1"
 url: "https://github.com/yumin-c/DeepOpenCRISPR-1"
 license: MIT
