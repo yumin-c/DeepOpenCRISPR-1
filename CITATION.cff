@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata from this file."
+title: "DeepOpenCRISPR-1: sequence-only activity prediction for OpenCRISPR-1 guide RNAs"
+abstract: >-
+  A deep-learning regressor that predicts OpenCRISPR-1 guide-RNA editing
+  activity (day 7, %) from sequence alone, together with conventional ML
+  baselines and a replicate-based variance analysis.
+type: software
+authors:
+  - given-names: Yumin
+    family-names: Cheong
+    affiliation: "Yonsei University"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"   # add if you have one
+repository-code: "https://github.com/yumin-c/DeepOpenCRISPR-1"
+url: "https://github.com/yumin-c/DeepOpenCRISPR-1"
+license: MIT
+version: 1.0.0
+date-released: "2026-11-20"
+# After Zenodo mints the DOI, add it here so "Cite this repository" shows it:
+# identifiers:
+#   - type: doi
+#     value: "10.5281/zenodo.XXXXXXX"
+#     description: "Archived snapshot of this release"
+#
+# When the paper is published, add its citation as the preferred reference:
+# preferred-citation:
+#   type: article
+#   title: "<paper title>"
+#   authors:
+#     - given-names: Yumin
+#       family-names: Cheong
+#   journal: "<journal>"
+#   year: 2026
+#   doi: "<paper DOI>"
