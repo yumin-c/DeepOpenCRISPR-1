@@ -9,26 +9,10 @@ type: software
 authors:
   - given-names: Yumin
     family-names: Cheong
-    affiliation: "Yonsei University"
-    # orcid: "https://orcid.org/0000-0000-0000-0000"   # add if you have one
+    affiliation: "Yonsei University College of Medicine"
+    # orcid: "https://orcid.org/0000-0002-5868-130X"
 repository-code: "https://github.com/yumin-c/DeepOpenCRISPR-1"
 url: "https://github.com/yumin-c/DeepOpenCRISPR-1"
 license: MIT
 version: 1.0.0
 date-released: "2026-11-20"
-# After Zenodo mints the DOI, add it here so "Cite this repository" shows it:
-# identifiers:
-#   - type: doi
-#     value: "10.5281/zenodo.XXXXXXX"
-#     description: "Archived snapshot of this release"
-#
-# When the paper is published, add its citation as the preferred reference:
-# preferred-citation:
-#   type: article
-#   title: "<paper title>"
-#   authors:
-#     - given-names: Yumin
-#       family-names: Cheong
-#   journal: "<journal>"
-#   year: 2026
-#   doi: "<paper DOI>"
